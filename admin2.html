@@ -1,0 +1,385 @@
+<!-- admin.html -->
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachable Machine Hub - Admin Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    crossorigin="anonymous"
+  />
+  <!-- Chart.js & Plugins -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+  <!-- jQuery & Sparklines -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery-sparkline@2.1.2/jquery.sparkline.min.js"></script>
+  <!-- Diff2Html -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html-ui-slim.min.js"></script>
+  <!-- SortableJS -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <!-- KBar (Command Palette) -->
+  <script type="module">
+    import { KBarProvider, KBarPortal, KBarPositioner, KBarAnimator, KBarSearch, KBarResults } from 'https://cdn.jsdelivr.net/npm/kbar@2.0.1/dist/index.esm.js';
+    window.KBar = { KBarProvider, KBarPortal, KBarPositioner, KBarAnimator, KBarSearch, KBarResults };
+  </script>
+  <style>
+    /* Dark mode themes */
+    [data-bs-theme="dark"] { background-color: #121212; color: #e0e0e0; }
+    /* Layout handle for drag */
+    .drag-handle { cursor: grab; }
+  </style>
+</head>
+<body class="bg-light">
+  <!-- Toast Container -->
+  <div id="toastContainer" class="position-fixed top-0 end-0 p-3"></div>
+
+  <!-- Command Palette -->
+  <script type="module">
+    const { KBarProvider, KBarPortal, KBarPositioner, KBarAnimator, KBarSearch, KBarResults } = window.KBar;
+    const actions = [
+      { id: 'upload-model', name: 'Upload Model', shortcut: ['u'], perform: () => document.getElementById('modelFile').focus() },
+      { id: 'view-logs', name: 'View Logs', shortcut: ['l'], perform: () => document.getElementById('logs').scrollIntoView() },
+      { id: 'toggle-dark', name: 'Toggle Theme', shortcut: ['t'], perform: () => toggleTheme() },
+      // add more...
+    ];
+    document.body.innerHTML += `
+      <kbar-provider>
+        <kbar-portal>
+          <kbar-positioner>
+            <kbar-animator>
+              <kbar-search placeholder="Type a command or shortcut..." />
+              <kbar-results />
+            </kbar-animator>
+          </kbar-positioner>
+        </kbar-portal>
+      </kbar-provider>
+    `;
+  </script>
+
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+      <span class="navbar-brand drag-handle">Teachable Machine Hub</span>
+      <button class="btn btn-outline-light me-2" id="themeToggle">🌓</button>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link active" href="#">Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="#models">Models</a></li>
+          <li class="nav-item"><a class="nav-link" href="#settings">Settings</a></li>
+          <li class="nav-item"><a class="nav-link" href="#users">Users</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-5">
+    <!-- TELEMETRY ROW -->
+    <div class="row mb-4" id="telemetry" data-mdb-draggable-init>
+      <!-- System Status Card -->
+      <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">CPU Utilization</h5>
+            <canvas id="cpuGauge" width="150" height="75"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- GPU Status Card -->
+      <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <h5 class="card-title">GPU Utilization</h5>
+            <canvas id="gpuGauge" width="150" height="75"></canvas>
+          </div>
+        </div>
+      </div>
+      <!-- Memory & Disk Sparklines -->
+      <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Memory Usage (last minute)</h5>
+            <span id="memorySpark"></span>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Network I/O</h5>
+            <span id="netSpark"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CAMERA PREVIEW & ALERTS -->
+    <div class="row mb-4">
+      <div class="col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Camera Preview</h5>
+            <video id="cameraPreview" class="w-100 rounded" autoplay playsinline></video>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">Health Alerts</h5>
+            <ul id="alertsList" class="list-group"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODEL MANAGEMENT -->
+    <section id="models" class="mb-5">
+      <h2 class="mb-4">Model Management</h2>
+      <div class="row">
+        <!-- Upload -->
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Upload New Model</h5>
+              <form id="uploadForm">
+                <div class="mb-3">
+                  <input type="file" class="form-control" id="modelFile" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Model</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- Installed Versions -->
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Installed Models & Versions</h5>
+              <table class="table">
+                <thead><tr><th>Version</th><th>Date</th><th>Score</th><th>Actions</th></tr></thead>
+                <tbody id="modelTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Inference Tester & A/B Slider -->
+      <div class="row mt-4">
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Live Inference Tester</h5>
+              <form id="inferenceForm">
+                <div class="mb-3">
+                  <input type="file" class="form-control" id="testImage" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-success">Run Inference</button>
+              </form>
+              <div id="inferenceResult" class="mt-3" style="display:none;">
+                <p><strong>Prediction:</strong> <span id="predLabel"></span></p>
+                <div class="progress"><div id="predConfidence" class="progress-bar" role="progressbar" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">A/B Deployment</h5>
+              <p>Route traffic: <span id="abPercent">50%</span></p>
+              <input type="range" id="abSlider" min="0" max="100" value="50" class="form-range">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- USER MANAGEMENT & API KEYS -->
+    <section id="users" class="mb-5">
+      <h2 class="mb-4">User & API Key Management</h2>
+      <div class="row">
+        <!-- Users -->
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Users & Roles</h5>
+              <ul id="userList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+        <!-- API Keys -->
+        <div class="col-md-6 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">API Keys & Tokens</h5>
+              <form id="keyForm" class="mb-3"><button class="btn btn-outline-primary">Generate New Key</button></form>
+              <ul id="keyList" class="list-group"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS & WEBHOOKS -->
+    <section id="settings" class="mb-5">
+      <h2 class="mb-4">System Settings & Webhooks</h2>
+      <div class="row">
+        <!-- Device -->
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Device Settings</h5>
+              <form id="deviceForm">
+                <div class="mb-3">
+                  <select class="form-select" id="cameraSelect">
+                    <option value="/dev/video0">/dev/video0</option>
+                  </select>
+                </div>
+                <button class="btn btn-primary">Update Device</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- Security -->
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Security Settings</h5>
+              <form id="securityForm">
+                <div class="mb-3">
+                  <input type="password" class="form-control" id="adminPass" placeholder="New Password">
+                </div>
+                <button class="btn btn-primary">Change Password</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <!-- Webhooks & Plugins -->
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Webhooks & Plugins</h5>
+              <form id="hookForm" class="mb-3">
+                <input type="url" class="form-control mb-2" id="hookUrl" placeholder="Webhook URL">
+                <button class="btn btn-outline-secondary">Add Webhook</button>
+              </form>
+              <button class="btn btn-outline-success mb-2">Browse Plugin Market</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUDIT LOGS -->
+    <section class="mb-5">
+      <h2 class="mb-4">Audit Trail & Release Notes</h2>
+      <div class="row">
+        <div class="col-lg-8 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Audit Log</h5>
+              <table class="table table-sm">
+                <thead><tr><th>Time</th><th>User</th><th>Action</th></tr></thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Release Notes</h5>
+              <div id="releaseNotes" style="max-height:300px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Initialization Scripts -->
+  <script>
+    /* Gauge setup (semi-circular) */
+    function createGauge(ctx, label) {
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: { datasets: [{ data: [Math.random()*100, 100], backgroundColor: ['#0d6efd', '#e9ecef'] }] },
+        options: {
+          rotation: -90, circumference: 180, cutout: '70%',
+          plugins: { annotation: {
+            annotations: { label: {
+              type: 'doughnutLabel',
+              content: ({chart}) => [chart.data.datasets[0].data[0].toFixed(1) + '%', label],
+              position: { y: '-50%' }
+            }}
+          }}
+        }
+      });
+    }
+    createGauge(document.getElementById('cpuGauge').getContext('2d'), 'CPU');  // :contentReference[oaicite:0]{index=0}
+    createGauge(document.getElementById('gpuGauge').getContext('2d'), 'GPU');  // :contentReference[oaicite:1]{index=1}
+
+    /* Sparklines */
+    $('#memorySpark').sparkline(Array(60).fill().map(()=>Math.random()*100), { type: 'line', width:'100%', height:'50' });  // :contentReference[oaicite:2]{index=2}
+    $('#netSpark').sparkline(Array(60).fill().map(()=>Math.random()*100), { type: 'bar', barColor:'#0d6efd', height:'50' });      // :contentReference[oaicite:3]{index=3}
+
+    /* Camera Preview */
+    if(navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video:true }).then(stream => {
+        document.getElementById('cameraPreview').srcObject = stream;
+      }).catch(console.error);  // :contentReference[oaicite:4]{index=4}
+    }
+
+    /* Alerts and Toasts */
+    function showToast(msg, variant='primary') {
+      const container = document.getElementById('toastContainer');
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-bg-${variant} border-0 show`;
+      toastEl.setAttribute('role','alert');
+      toastEl.innerHTML = `<div class="d-flex">
+        <div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+      container.append(toastEl);
+      setTimeout(()=>toastEl.remove(),4000);
+    }
+    showToast('Dashboard Loaded');  // :contentReference[oaicite:5]{index=5}
+
+    /* Drag-and-drop Telemetry Cards */
+    Sortable.create(document.getElementById('telemetry'), { animation:150, handle:'.drag-handle' });  // :contentReference[oaicite:6]{index=6}
+
+    /* Theme Toggle */
+    function toggleTheme(){
+      const html = document.documentElement;
+      const next = html.getAttribute('data-bs-theme')==='light'?'dark':'light';
+      html.setAttribute('data-bs-theme', next);
+      localStorage.setItem('theme', next);
+    }
+    document.getElementById('themeToggle').onclick = toggleTheme;
+    (localStorage.getItem('theme')||'light')==='dark' && toggleTheme();  // :contentReference[oaicite:7]{index=7}
+
+    /* A/B Slider */
+    document.getElementById('abSlider').oninput = e=>{
+      document.getElementById('abPercent').innerText = e.target.value+'%';
+    };
+
+    /* Diff Viewer (example) */
+    // Diff2HtmlUI initialization would go here when showing diffs :contentReference[oaicite:8]{index=8}
+
+    /* Command Palette (KBar) initialization */
+    // Using window.KBar API as above :contentReference[oaicite:9]{index=9}
+
+    /* Further code to populate tables (models, users, audit) and handle forms omitted for brevity */
+  </script>
+</body>
+</html>
