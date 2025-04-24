@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Model</title>
+  <title>Image & Video Model</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
   <style>
+    #webcam-container video,
     #webcam-container canvas {
       width: 100% !important;
       height: auto !important;
@@ -18,89 +19,113 @@
       <a class="navbar-brand" href="index.html">← Home</a>
     </div>
   </nav>
+
   <div class="container py-4">
-    <h1 class="mb-4 text-center">Image Classification</h1>
+    <h1 class="mb-4 text-center">Webcam Image & Video Capture</h1>
     <div class="row">
       <div class="col-md-6 mb-3">
         <div class="card">
           <div class="card-header">Live Webcam</div>
-          <div class="card-body d-flex justify-content-center" id="webcam-container">
-            <p class="text-muted">Click "Start Webcam" to begin</p>
-          </div>
-          <div class="card-footer text-center">
-            <button class="btn btn-primary" onclick="init()">Start Webcam</button>
+          <div class="card-body d-flex flex-column align-items-center" id="webcam-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" class="d-none"></canvas>
+            <div class="mt-3">
+              <button class="btn btn-success me-2" onclick="captureImage()">📷 Capture Image</button>
+              <button id="startRecord" class="btn btn-danger me-2" onclick="startRecording()">⏺️ Start Recording</button>
+              <button id="stopRecord" class="btn btn-secondary" onclick="stopRecording()" disabled>⏹️ Stop Recording</button>
+            </div>
           </div>
         </div>
       </div>
+
       <div class="col-md-6 mb-3">
         <div class="card">
-          <div class="card-header">Upload Image</div>
+          <div class="card-header">Preview & Submit</div>
           <div class="card-body text-center">
-            <input type="file" accept="image/*" class="form-control" onchange="handleImageUpload(event)" />
+            <img id="capturedImage" class="img-fluid mb-3 d-none" />
+            <video id="recordedVideo" class="w-100 mb-3 d-none" controls></video>
+            <form id="uploadForm" method="POST" action="/upload" enctype="multipart/form-data">
+              <input type="hidden" name="imageBlob" id="imageBlobInput">
+              <input type="hidden" name="videoBlob" id="videoBlobInput">
+              <button type="submit" class="btn btn-primary mt-2" id="submitBtn">Submit to Model</button>
+            </form>
           </div>
         </div>
       </div>
     </div>
-    <div id="label-container" class="mt-4"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
   <script>
-    const URL = "models/image-model/";
-    let model, webcam, labelContainer;
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const capturedImage = document.getElementById('capturedImage');
+    const recordedVideo = document.getElementById('recordedVideo');
+    const imageBlobInput = document.getElementById('imageBlobInput');
+    const videoBlobInput = document.getElementById('videoBlobInput');
 
-    async function init() {
-      try {
-        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+    let mediaRecorder;
+    let recordedChunks = [];
 
-        webcam = new tmImage.Webcam(300, 300, true); // width, height, flip
-        await webcam.setup();
-        await webcam.play();
-
-        document.getElementById("webcam-container").innerHTML = "";
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-
-        if (!labelContainer) {
-          labelContainer = document.getElementById("label-container");
-        }
-        labelContainer.innerHTML = "";
-        for (let i = 0; i < model.getTotalClasses(); i++) {
-          const div = document.createElement("div");
-          div.classList.add("p-2", "border", "rounded", "mb-2");
-          labelContainer.appendChild(div);
-        }
-
-        loop();
-      } catch (err) {
-        document.getElementById("webcam-container").innerHTML = `<p class="text-danger">Failed to access webcam. Please allow camera access.</p>`;
-        console.error("Webcam init error:", err);
-      }
-    }
-
-    async function loop() {
-      webcam.update();
-      await predict(webcam.canvas);
-      requestAnimationFrame(loop);
-    }
-
-    async function predict(input) {
-      const prediction = await model.predict(input);
-      prediction.forEach((p, i) => {
-        labelContainer.childNodes[i].innerText = `${p.className}: ${p.probability.toFixed(2)}`;
+    // Setup webcam stream
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        video.srcObject = stream;
+        window.stream = stream;
+      })
+      .catch(err => {
+        alert("Error accessing webcam: " + err.message);
       });
+
+    function captureImage() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        capturedImage.src = url;
+        capturedImage.classList.remove("d-none");
+
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          imageBlobInput.value = reader.result;
+        };
+      }, 'image/png');
     }
 
-    function handleImageUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    function startRecording() {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(window.stream);
 
-      const reader = new FileReader();
-      reader.onload = e => {
-        const img = new Image();
-        img.onload = () => predict(img);
-        img.src = e.target.result;
+      mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
       };
-      reader.readAsDataURL(file);
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        recordedVideo.src = url;
+        recordedVideo.classList.remove("d-none");
+
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          videoBlobInput.value = reader.result;
+        };
+      };
+
+      mediaRecorder.start();
+      document.getElementById('startRecord').disabled = true;
+      document.getElementById('stopRecord').disabled = false;
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+      document.getElementById('startRecord').disabled = false;
+      document.getElementById('stopRecord').disabled = true;
     }
   </script>
 
