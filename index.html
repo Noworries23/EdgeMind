@@ -12,6 +12,80 @@
     crossorigin="anonymous"
   />
 </head>
+<!-- Add this inside <body> before the closing </body> tag -->
+
+<!-- Login Modal -->
+<div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="loginForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="loginModalLabel">Login</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" required />
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password" required />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Login Button in Navbar -->
+<li class="nav-item" id="loginBtnContainer">
+  <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#loginModal">Login</button>
+</li>
+<li class="nav-item d-none" id="logoutBtnContainer">
+  <button class="btn btn-outline-light" onclick="logout()">Logout</button>
+</li>
+
+<script>
+  // Dummy credentials (replace with real logic/server if needed)
+  const dummyUser = {
+    username: 'admin',
+    password: '1234'
+  };
+
+  document.getElementById('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+
+    if (user === dummyUser.username && pass === dummyUser.password) {
+      localStorage.setItem('isLoggedIn', 'true');
+      updateLoginState();
+      const modal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+      modal.hide();
+    } else {
+      alert('Invalid username or password!');
+    }
+  });
+
+  function logout() {
+    localStorage.removeItem('isLoggedIn');
+    updateLoginState();
+  }
+
+  function updateLoginState() {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    document.getElementById('loginBtnContainer').classList.toggle('d-none', isLoggedIn);
+    document.getElementById('logoutBtnContainer').classList.toggle('d-none', !isLoggedIn);
+  }
+
+  // Run on page load
+  updateLoginState();
+</script>
+
 <body class="bg-light">
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
