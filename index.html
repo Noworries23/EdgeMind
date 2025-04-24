@@ -1,0 +1,76 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teachable Machine Hub</title>
+  <!-- Bootstrap CSS -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    crossorigin="anonymous"
+  />
+</head>
+<body class="bg-light">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="index.html">Teachable Machine Hub</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link active" href="#about-us">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#model-types">Models</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="container py-5">
+    <header class="text-center mb-5">
+      <h1 class="display-4">Welcome to Teachable Machine Hub</h1>
+      <p class="lead">Easily deploy and demo your custom machine learning models on the web.</p>
+    </header>
+    <section id="about-us" class="mb-5">
+      <h2>About Us</h2>
+      <p>We provide a simple, extendable front-end framework to integrate your Teachable Machine image, audio, and pose models. Host on any server or device like a Jetson Nano, and let users interact via webcam or uploads.</p>
+    </section>
+    <section id="model-types">
+      <h2 class="mb-4">Model Types</h2>
+      <div class="row">
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <h5 class="card-title">Image Classification</h5>
+              <p class="card-text">Classify images live or by upload.</p>
+              <a href="image.html" class="btn btn-outline-primary">Try Image Model</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <h5 class="card-title">Audio Classification</h5>
+              <p class="card-text">Detect sounds using mic or audio files.</p>
+              <a href="audio.html" class="btn btn-outline-success">Try Audio Model</a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 mb-3">
+          <div class="card h-100">
+            <div class="card-body text-center">
+              <h5 class="card-title">Pose Estimation</h5>
+              <p class="card-text">Estimate poses from webcam or video.</p>
+              <a href="pose.html" class="btn btn-outline-warning">Try Pose Model</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+</body>
+</html>
+
