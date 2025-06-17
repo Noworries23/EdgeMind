@@ -1,1 +1,1 @@
-(enhanced teachable machine-claude.drawio.png)
+![](enhanced teachable machine-claude.drawio.png)
