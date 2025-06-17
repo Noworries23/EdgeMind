@@ -1,1 +1,1 @@
-![](enhanced teachable machine-claude.drawio.png)
+![Alt]("enhanced teachable machine-claude.drawio.png")
